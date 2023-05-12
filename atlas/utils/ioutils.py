@@ -13,7 +13,7 @@ class IndexedFileWriter:
             raise ValueError(f"Unrecognized mode {mode}")
 
         self.f: BinaryIO = open(path, mode)
-        self.index_f: BinaryIO = open(path + '.index', mode)
+        self.index_f: BinaryIO = open(f'{path}.index', mode)
         self.writer = writer
 
     def append(self, record):
@@ -31,7 +31,7 @@ class IndexedFileReader(Collection):
         self.path = path
         self.f = open(path, 'rb')
         if index_path is None:
-            self.index_f = open(path + '.index', 'rb')
+            self.index_f = open(f'{path}.index', 'rb')
         else:
             self.index_f = open(index_path, 'rb')
 
@@ -75,13 +75,8 @@ class IndexedFileReader(Collection):
         with multiprocessing.Pool(num_processes) as p:
             for i in range(0, total, batch_size):
                 batch = [self.__getitem__(j) for j in range(i, min(total, i + batch_size))]
-                for res in p.imap(fn, batch):
-                    yield res
+                yield from p.imap(fn, batch)
 
     def __contains__(self, x) -> bool:
-        for i in iter(self):
-            if i is x:
-                return True
-
-        return False
+        return any(i is x for i in iter(self))
 

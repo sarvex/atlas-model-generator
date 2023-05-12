@@ -7,12 +7,7 @@ import copy
 
 
 def parse(code, wrap_module=False):
-    if wrap_module:
-        result = ast.parse(code)
-    else:
-        result = ast.parse(code).body[0]
-
-    return result
+    return ast.parse(code) if wrap_module else ast.parse(code).body[0]
 
 
 def parse_obj(obj):
@@ -43,17 +38,11 @@ def attr_to_qual_name(node: ast.Attribute):
         accesses.append(node.attr)
 
     accesses.append(node.value.id)
-    qual_name = '.'.join(reversed(accesses))
-    return qual_name
+    return '.'.join(reversed(accesses))
 
 
 def get_all_names(n: ast.AST) -> List[str]:
-    res = []
-    for node in ast.walk(n):
-        if isinstance(node, ast.Name):
-            res.append(node.id)
-
-    return res
+    return [node.id for node in ast.walk(n) if isinstance(node, ast.Name)]
 
 
 def preorder_traversal(node: ast.AST):

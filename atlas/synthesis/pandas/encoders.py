@@ -14,8 +14,8 @@ from atlas.operators import unpack_sid, OpInfo, OpResolvable, find_known_operato
 
 
 class NodeFeatures(Enum):
-    def _generate_next_value_(name, start, count, last_values):
-        return name
+    def _generate_next_value_(self, start, count, last_values):
+        return self
 
 
 class NodeDataTypes(NodeFeatures):
@@ -34,10 +34,7 @@ class NodeDataTypes(NodeFeatures):
         val_type = type(val)
 
         if np.issubdtype(val_type, np.floating):
-            if pd.isnull(val):
-                val_type = cls.NAN
-            else:
-                val_type = cls.FLOAT
+            val_type = cls.NAN if pd.isnull(val) else cls.FLOAT
         elif np.issubdtype(val_type, np.signedinteger) or np.issubdtype(val_type, np.unsignedinteger):
             val_type = cls.INT
         elif np.issubdtype(val_type, np.str_):
@@ -52,10 +49,7 @@ class NodeDataTypes(NodeFeatures):
             val_type = cls.NONE
         else:
             try:
-                if pd.isnull(val):
-                    val_type = cls.NAN
-                else:
-                    val_type = cls.OBJECT
+                val_type = cls.NAN if pd.isnull(val) else cls.OBJECT
             except:
                 val_type = cls.OBJECT
 
@@ -80,8 +74,8 @@ class NodeSources(NodeFeatures):
 
 
 class EdgeTypes(Enum):
-    def _generate_next_value_(name, start, count, last_values):
-        return name
+    def _generate_next_value_(self, start, count, last_values):
+        return self
 
     #  Naming Convention : Name of edge describes the role of src for dst
 
@@ -193,29 +187,33 @@ class DataFrameEncoding(ValueEncoding):
         self.edges.append(GraphEdge(src, dst, etype))
 
     def get_index_node(self, val, level: int, idx: int, num_levels: int):
-        label = '[{},{}]'.format(idx, level - num_levels)
-        node = self.create_node(val, label, {NodeRoles.INDEX, NodeDataTypes.from_value(val)})
-        return node
+        label = f'[{idx},{level - num_levels}]'
+        return self.create_node(
+            val, label, {NodeRoles.INDEX, NodeDataTypes.from_value(val)}
+        )
 
     def get_column_node(self, val, level: int, idx: int, num_levels: int):
-        label = '[{},{}]'.format(level - num_levels, idx)
-        node = self.create_node(val, label, {NodeRoles.COLUMN, NodeDataTypes.from_value(val)})
-        return node
+        label = f'[{level - num_levels},{idx}]'
+        return self.create_node(
+            val, label, {NodeRoles.COLUMN, NodeDataTypes.from_value(val)}
+        )
 
     def get_index_name_node(self, val, level: int, num_levels: int):
-        label = '[{},{}]'.format(-1, level - num_levels)
-        node = self.create_node(val, label, {NodeRoles.INDEX_NAME, NodeDataTypes.from_value(val)})
-        return node
+        label = f'[-1,{level - num_levels}]'
+        return self.create_node(
+            val, label, {NodeRoles.INDEX_NAME, NodeDataTypes.from_value(val)}
+        )
 
     def get_column_name_node(self, val, level: int, num_levels: int):
-        label = '[{},{}]'.format(level - num_levels, -1)
-        node = self.create_node(val, label, {NodeRoles.COLUMN_NAME, NodeDataTypes.from_value(val)})
-        return node
+        label = f'[{level - num_levels},-1]'
+        return self.create_node(
+            val, label, {NodeRoles.COLUMN_NAME, NodeDataTypes.from_value(val)}
+        )
 
     def add_index_nodes(self, index: pd.Index, mode='df.index'):
-        if isinstance(index, pd.MultiIndex):
-            index_nodes = []
+        index_nodes = []
 
+        if isinstance(index, pd.MultiIndex):
             for idx, vals in enumerate(index):
                 index_nodes.append([])
                 for level, val in enumerate(vals):
@@ -229,7 +227,6 @@ class DataFrameEncoding(ValueEncoding):
             return index_nodes
 
         else:
-            index_nodes = []
             for idx, val in enumerate(index):
                 if mode == 'df.index':
                     node = self.get_index_node(val, level=0, idx=idx, num_levels=1)
@@ -246,8 +243,11 @@ class DataFrameEncoding(ValueEncoding):
             for r_idx, row in enumerate(cells):
                 self.cell_nodes.append([])
                 for c_idx, val in enumerate(row):
-                    node = self.create_node(val, label='[{},{}]'.format(r_idx, c_idx),
-                                            features={NodeDataTypes.from_value(val)})
+                    node = self.create_node(
+                        val,
+                        label=f'[{r_idx},{c_idx}]',
+                        features={NodeDataTypes.from_value(val)},
+                    )
                     self.cell_nodes[-1].append(node)
 
         if self.INDEX_NODES:
@@ -344,24 +344,22 @@ class ValueCollection:
         self.value_encodings: List[ValueEncoding] = []
 
     def add_external_edges(self, v1: ValueEncoding, v2: ValueEncoding):
-        if self.EQUALITY_EDGES:
-            for val1, nodes1 in v1.val_node_map.items():
-                if val1 in v2.val_node_map:
-                    val2 = val1
-                    nodes2 = v2.val_node_map[val2]
-                    try:
-                        #  This can fail for NaNs etc.
-                        if val1 == val2:
-                            for n1, n2 in itertools.product(nodes1, nodes2):
-                                self.edges.append(GraphEdge(n1, n2, EdgeTypes.EQUALITY))
-                                self.edges.append(GraphEdge(n2, n1, EdgeTypes.EQUALITY))
+        if not self.EQUALITY_EDGES:
+            return
+        for val1, nodes1 in v1.val_node_map.items():
+            if val1 in v2.val_node_map:
+                val2 = val1
+                nodes2 = v2.val_node_map[val2]
+                try:
+                    #  This can fail for NaNs etc.
+                    if val1 == val2:
+                        for n1, n2 in itertools.product(nodes1, nodes2):
+                            self.edges.append(GraphEdge(n1, n2, EdgeTypes.EQUALITY))
+                            self.edges.append(GraphEdge(n2, n1, EdgeTypes.EQUALITY))
 
-                    except Exception as e:
-                        print(f"Error comparing {val1} and {val2}", file=sys.stderr)
-                        logging.exception(e)
-
-        if self.SUBSTR_EDGES or self.SUPSTR_EDGES:
-            pass
+                except Exception as e:
+                    print(f"Error comparing {val1} and {val2}", file=sys.stderr)
+                    logging.exception(e)
 
     def add_value_encoding(self, val_encoding: ValueEncoding):
         for v in self.value_encodings:
@@ -448,10 +446,10 @@ class PandasGraphEncoder(OpResolvable):
         encoded_context: Dict[str, ValueEncoding] = {k: self.encode_value(k, v) for k, v in context.items()}
 
         val_collection: ValueCollection = ValueCollection()
-        for k, v in encoded_domain.items():
+        for v in encoded_domain.values():
             v.build()
             val_collection.add_value_encoding(v)
-        for k, v in encoded_context.items():
+        for v in encoded_context.values():
             v.build()
             val_collection.add_value_encoding(v)
 
@@ -492,7 +490,7 @@ class PandasGraphEncoder(OpResolvable):
         encoded_context: Dict[str, ValueEncoding] = {k: self.encode_value(k, v) for k, v in context.items()}
 
         val_collection: ValueCollection = ValueCollection()
-        for k, v in encoded_context.items():
+        for v in encoded_context.values():
             v.build()
             val_collection.add_value_encoding(v)
 
@@ -509,7 +507,7 @@ class PandasGraphEncoder(OpResolvable):
             encoding['choice'] = domain.index(choice)
 
         else:
-            encoding['mapping'] = {idx: v for idx, v in enumerate(domain)}
+            encoding['mapping'] = dict(enumerate(domain))
 
         self.post_process(encoding)
         return encoding
@@ -527,10 +525,10 @@ class PandasGraphEncoder(OpResolvable):
         encoded_context: Dict[str, ValueEncoding] = {k: self.encode_value(k, v) for k, v in context.items()}
 
         val_collection: ValueCollection = ValueCollection()
-        for k, v in encoded_domain.items():
+        for v in encoded_domain.values():
             v.build()
             val_collection.add_value_encoding(v)
-        for k, v in encoded_context.items():
+        for v in encoded_context.values():
             v.build()
             val_collection.add_value_encoding(v)
 
@@ -575,10 +573,10 @@ class PandasGraphEncoder(OpResolvable):
         encoded_context: Dict[str, ValueEncoding] = {k: self.encode_value(k, v) for k, v in context.items()}
 
         val_collection: ValueCollection = ValueCollection()
-        for k, v in encoded_domain.items():
+        for v in encoded_domain.values():
             v.build()
             val_collection.add_value_encoding(v)
-        for k, v in encoded_context.items():
+        for v in encoded_context.values():
             v.build()
             val_collection.add_value_encoding(v)
 
@@ -607,12 +605,10 @@ class PandasGraphEncoder(OpResolvable):
                     raise ValueError(f"Element {elem} of passed choice {choice} could not be found in domain {domain}")
 
             encoding['choice'].append(node_to_int[terminal])
-            encoding['terminal'] = node_to_int[terminal]
-
         else:
             encoding['mapping'] = {node_to_int[encoded_domain[f"D{idx}"].get_representor_node()]: v
                                    for idx, v in enumerate(domain)}
-            encoding['terminal'] = node_to_int[terminal]
+        encoding['terminal'] = node_to_int[terminal]
 
         self.post_process(encoding)
         return encoding
@@ -628,7 +624,7 @@ class PandasGraphEncoder(OpResolvable):
         encoded_context: Dict[str, ValueEncoding] = {k: self.encode_value(k, v) for k, v in context.items()}
 
         val_collection: ValueCollection = ValueCollection()
-        for k, v in encoded_context.items():
+        for v in encoded_context.values():
             v.build()
             val_collection.add_value_encoding(v)
 
@@ -645,7 +641,7 @@ class PandasGraphEncoder(OpResolvable):
             encoding['choice'] = [domain.index(c) for c in choice]
 
         else:
-            encoding['mapping'] = {idx: v for idx, v in enumerate(domain)}
+            encoding['mapping'] = dict(enumerate(domain))
 
         self.post_process(encoding)
         return encoding

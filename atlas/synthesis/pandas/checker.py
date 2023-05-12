@@ -133,14 +133,7 @@ class Checker:
     @staticmethod
     def check_default(v1: Any, v2: Any) -> bool:
         try:
-            if v1 == v2:
-                #  I know what I'm doing
-                #  v1 == v2 is not guaranteed to return a bool
-                #  This is to capture that
-                return True
-            else:
-                return False
-
+            return v1 == v2
         except (AssertionError, TypeError, ValueError, NameError):
             return False
         except Exception as e:

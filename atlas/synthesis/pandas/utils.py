@@ -83,7 +83,7 @@ def create_inversion_template():
 def check_nan(num):
     try:
         #  To get around all the nan + array business
-        return (np.isnan(num) == True) is True
+        return np.isnan(num) == True
     except:
         return False
 

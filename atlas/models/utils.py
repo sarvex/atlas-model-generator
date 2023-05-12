@@ -37,9 +37,7 @@ def save_model(model: SerializableModel, path: str, no_zip=False):
             return
 
         #  Package it up into a zip and clean up the directory
-        if path.endswith(".zip"):
-            path = path[:-len(".zip")]
-
+        path = path.removesuffix(".zip")
         shutil.make_archive(path, "zip", work_dir)
 
     finally:

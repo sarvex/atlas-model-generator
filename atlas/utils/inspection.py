@@ -72,11 +72,7 @@ def getclosurevars_recursive(func, f_ast: Optional[ast.FunctionDef] = None):
                 except KeyError:
                     unbound_names.add(name)
 
-        for const in code.co_consts:
-            #  Add the code to inspect recursively
-            if iscode(const):
-                codes.append(const)
-
+        codes.extend(const for const in code.co_consts if iscode(const))
     for name in annotation_names:
         try:
             global_vars[name] = global_ns[name]

@@ -59,11 +59,7 @@ class MLP:
         self.build()
 
     def get_layers(self, idx: int, layer_dim: int, act: str):
-        if act == 'leaky_relu':
-            act_str = 'linear'
-        else:
-            act_str = act
-
+        act_str = 'linear' if act == 'leaky_relu' else act
         if idx == 0:
             main_layer = tf.keras.layers.Dense(layer_dim, activation=act_str, input_dim=self.in_size,
                                                kernel_initializer='glorot_uniform')

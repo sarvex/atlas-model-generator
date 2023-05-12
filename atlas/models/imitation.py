@@ -26,7 +26,9 @@ class IndependentOperatorsModel(TraceImitationModel, SerializableModel, OpResolv
 
     def __init__(self, work_dir: str = None):
         if work_dir is None:
-            work_dir = tempfile.mkdtemp(prefix=f"generator-model-{datetime.datetime.today():%d-%m-%Y-%H-%M-%S}")
+            work_dir = tempfile.mkdtemp(
+                prefix=f"generator-model-{datetime.datetime.now():%d-%m-%Y-%H-%M-%S}"
+            )
 
         self.work_dir = work_dir
         self.model_map: Dict[OpInfo, TrainableSerializableModel] = {}

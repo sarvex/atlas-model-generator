@@ -11,7 +11,9 @@ class GNN(TensorflowModel, ABC):
         self.params = params
 
     def get_batch_number(self, graph_iter: Iterator[Dict], batch_size: int) -> int:
-        return (sum([len(g['nodes']) for g in graph_iter]) + batch_size - 1) // batch_size
+        return (
+            sum(len(g['nodes']) for g in graph_iter) + batch_size - 1
+        ) // batch_size
 
     def get_batch_iterator(self, graph_iter: Iterator[Dict],
                            batch_size: int, is_training: bool = True) -> Iterator[Dict]:

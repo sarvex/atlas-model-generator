@@ -66,9 +66,8 @@ class TensorflowModel(TrainableModel, SerializableModel, ABC):
         if self.sess is None:
             self.setup()
 
-        if num_epochs < 0:
-            if early_stopper is None:
-                early_stopper = SimpleEarlyStopper()
+        if num_epochs < 0 and early_stopper is None:
+            early_stopper = SimpleEarlyStopper()
 
         history: List[Dict] = []
 
@@ -142,9 +141,10 @@ class TensorflowModel(TrainableModel, SerializableModel, ABC):
                     best_loss = cur_loss
                     saved = True
 
-                if early_stopper is not None:
-                    if early_stopper.evaluate(valid_acc / num_datapoints, valid_loss / num_datapoints):
-                        break
+                if early_stopper is not None and early_stopper.evaluate(
+                    valid_acc / num_datapoints, valid_loss / num_datapoints
+                ):
+                    break
 
             if saved:
                 saver.restore(self.sess, f"{tmpdir}/model.weights")

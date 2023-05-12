@@ -18,10 +18,7 @@ class Parameters(Mapping[str, Any]):
         return self.mapping.__setitem__(key, value)
 
     def get(self, key: str, default: Any):
-        if key in self.mapping:
-            return self.mapping[key]
-
-        return default
+        return self.mapping[key] if key in self.mapping else default
 
     def __len__(self) -> int:
         return len(self.mapping)

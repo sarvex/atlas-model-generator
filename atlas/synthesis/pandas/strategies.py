@@ -67,9 +67,7 @@ class PandasSequentialDataGenerationStrategy(DfsStrategy):
         if datagen_label is not None:
             attr = f"get_ext_{datagen_label}"
             if hasattr(self, attr):
-                a = getattr(self, attr)(context=context)
-                return a
-
+                return getattr(self, attr)(context=context)
         return self.Sentinel
 
     def generate_random_string(self, length: int):
@@ -218,19 +216,26 @@ class PandasSequentialDataGenerationStrategy(DfsStrategy):
             dtype = dtypes[col]
             vals = list(df[col])
             if ('int' in str(dtype)) or ('float' in str(dtype)):
-                pool.append('{} > {}'.format(col, random.choice(vals)))
-                pool.append('{} < {}'.format(col, random.choice(vals)))
-                pool.append('{} == {}'.format(col, random.choice(vals)))
-                pool.append('{} != {}'.format(col, random.choice(vals)))
+                pool.extend(
+                    (
+                        f'{col} > {random.choice(vals)}',
+                        f'{col} < {random.choice(vals)}',
+                        f'{col} == {random.choice(vals)}',
+                        f'{col} != {random.choice(vals)}',
+                    )
+                )
             elif 'object' in str(dtype):
-                pool.append('{} == "{}"'.format(col, random.choice(vals)))
-                pool.append('{} != "{}"'.format(col, random.choice(vals)))
-
+                pool.extend(
+                    (
+                        f'{col} == "{random.choice(vals)}"',
+                        f'{col} != "{random.choice(vals)}"',
+                    )
+                )
         sample_size = random.randint(1, min(5, len(pool)))
         sample = random.sample(pool, sample_size)
         expr = sample[0]
         for i in range(1, len(sample)):
-            expr += ' {} '.format(random.choice(['and', 'or']))
+            expr += f" {random.choice(['and', 'or'])} "
             expr += sample[i]
 
         return expr
@@ -327,8 +332,12 @@ class PandasSequentialDataGenerationStrategy(DfsStrategy):
             return
 
         choice = random.choice(list(numeric_cols))
-        return random.choice([LambdaWrapper('lambda x: x["{}"] > 1'.format(choice)),
-                              LambdaWrapper('lambda x: x["{}"] + 1'.format(choice))])
+        return random.choice(
+            [
+                LambdaWrapper(f'lambda x: x["{choice}"] > 1'),
+                LambdaWrapper(f'lambda x: x["{choice}"] + 1'),
+            ]
+        )
 
     def get_ext_self_df_all_any(self, context=None):
         return self.df_generator.call(DfConfig(value_bags=[*Bags.int_bags, *Bags.string_bags,
@@ -336,19 +345,22 @@ class PandasSequentialDataGenerationStrategy(DfsStrategy):
 
     def get_ext_lower_df_clip(self, context=None):
         df = context['_self']
-        vals = list(filter(lambda x: isinstance(x, (int, np.integer, float, np.floating)),
-                           list(df.values.flatten())))
-        if len(vals) == 0:
+        if vals := list(
+            filter(
+                lambda x: isinstance(x, (int, np.integer, float, np.floating)),
+                list(df.values.flatten()),
+            )
+        ):
+            return random.uniform(min(vals), max(vals))
+        else:
             return
-
-        return random.uniform(min(vals), max(vals))
 
     def get_ext_upper_df_clip(self, context=None):
         df = context['_self']
         vals = list(filter(lambda x: isinstance(x, (int, np.integer, float, np.floating)),
                            list(df.values.flatten())))
         _lower = context['_lower'] or min(vals)
-        if len(vals) == 0:
+        if not vals:
             return
 
         return random.uniform(_lower, max(vals))
@@ -427,12 +439,18 @@ class PandasSequentialDataGenerationStrategy(DfsStrategy):
         nr, nc = df.shape
         if np.random.choice([0, 1]) == 0:
             vals = list(df.index)
-            new_vals = [self.generate_random_string(random.randint(1, 8)) for i in range(nr // 2)]
+            new_vals = [
+                self.generate_random_string(random.randint(1, 8))
+                for _ in range(nr // 2)
+            ]
             return list(random.sample(vals + new_vals, nr))
 
         else:
             vals = list(df.columns)
-            new_vals = [self.generate_random_string(random.randint(1, 8)) for i in range(nc // 2)]
+            new_vals = [
+                self.generate_random_string(random.randint(1, 8))
+                for _ in range(nc // 2)
+            ]
             return list(random.sample(vals + new_vals, nc))
 
     def get_ext_other_df_reindex_like(self, context=None):
@@ -452,11 +470,9 @@ class PandasSequentialDataGenerationStrategy(DfsStrategy):
         (nr, nc) = df.shape
         if np.random.choice([0, 1]) == 0:
             val = random.sample(range(nr), random.choice(range(1, (nr + 1))))
-            random.shuffle(val)
-
         else:
             val = random.sample(range(nc), random.choice(range(1, (nc + 1))))
-            random.shuffle(val)
+        random.shuffle(val)
 
         return val
 

@@ -27,8 +27,7 @@ def gen_ndarray_transpose(inputs, *args, **kwargs):
     _self = Select([inp for inp in inputs if isinstance(inp, np.ndarray)])
 
     _axes = None
-    use_axis = Select([True, False])
-    if use_axis:
+    if use_axis := Select([True, False]):
         axis_indices = range(len(_self.shape))
         _axes = OrderedSubset(axis_indices, lengths=[len(axis_indices)])
 
@@ -50,7 +49,7 @@ def gen_ndarray_reshape(inputs, *args, **kwargs):
         non_1_factors = get_non_1_prime_factors(_self.size)
 
         _shape = []
-        for i in range(n_dims - 1):
+        for _ in range(n_dims - 1):
             factors_to_use = Subset(non_1_factors, include_empty=True)
             dimension_size = 1
             for f in factors_to_use:

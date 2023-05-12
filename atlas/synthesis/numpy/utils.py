@@ -6,10 +6,7 @@ def is_prime(n):
         return True
     if n % 2 == 0:
         return False
-    for d in range(5, ceil(sqrt(n)) + 1, 2):
-        if n % d == 0:
-            return False
-    return True
+    return all(n % d != 0 for d in range(5, ceil(sqrt(n)) + 1, 2))
 
 def get_non_1_prime_factors(n):
     factor_list = []

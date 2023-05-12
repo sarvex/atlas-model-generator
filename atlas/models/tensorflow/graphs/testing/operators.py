@@ -84,9 +84,7 @@ class TestOperatorsBasic(unittest.TestCase):
         for choice in choices:
             edges.extend([(choice, 0, matched), (matched, 0, choice)])
 
-        for i, j in zip(choices, choices[1:]):
-            edges.append((i, 1, j))
-
+        edges.extend((i, 1, j) for i, j in zip(choices, choices[1:]))
         return {
             'nodes': nodes,
             'edges': edges,
@@ -104,11 +102,7 @@ class TestOperatorsBasic(unittest.TestCase):
         choices = random.sample(domain, random.randrange(1, max_length))
         random.shuffle(choices)
         nodes = [[i] for i in choices]
-        edges = []
-
-        for i in range(len(choices)-1):
-            edges.append((i, 0, i+1))
-
+        edges = [(i, 0, i+1) for i in range(len(choices)-1)]
         return {
             'nodes': nodes,
             'edges': edges,
@@ -133,15 +127,13 @@ class TestOperatorsBasic(unittest.TestCase):
         for choice in choices:
             edges.extend([(choice, 0, matched), (matched, 0, choice)])
 
-        for i, j in zip(choices, choices[1:]):
-            edges.append((i, 1, j))
-
+        edges.extend((i, 1, j) for i, j in zip(choices, choices[1:]))
         return {
             'nodes': nodes,
             'edges': edges,
             'domain': domain + [terminal],
-            'choice': sum([[i] * 2 for i in choices[:-1]], []) + [terminal],  # Repeated twice
-            'terminal': terminal
+            'choice': sum(([i] * 2 for i in choices[:-1]), []) + [terminal],
+            'terminal': terminal,
         }
 
     def test_select_fixed_small_1(self):
@@ -464,7 +456,7 @@ class TestOperatorsBasic(unittest.TestCase):
             'num_node_features': 3,
             'num_edge_types': 2,
             'learning_rate': 0.001,
-            'max_length': max([len(i['choice']) for i in training + validation])
+            'max_length': max(len(i['choice']) for i in training + validation),
         }
 
         model = SequenceGGNN(config)
@@ -495,7 +487,7 @@ class TestOperatorsBasic(unittest.TestCase):
             'num_node_features': 3,
             'num_edge_types': 2,
             'learning_rate': 0.001,
-            'max_length': max([len(i['choice']) for i in training + validation])
+            'max_length': max(len(i['choice']) for i in training + validation),
         }
 
         model = SequenceGGNN(config)

@@ -37,10 +37,10 @@ def dump_encodings(data: Collection[OpTrace], encoder: PandasGraphEncoder, op_in
 
 class PandasSelect(SelectGGNN):
     def __init__(self, params: Dict[str, Any], op_info: OpInfo):
-        params.update({
+        params |= {
             'num_node_features': self.encoder.get_num_node_features(),
-            'num_edge_types': self.encoder.get_num_edge_types()
-        })
+            'num_edge_types': self.encoder.get_num_edge_types(),
+        }
 
         self.encoder = PandasGraphEncoder()
         self.op_info = op_info
@@ -65,11 +65,11 @@ class PandasSelect(SelectGGNN):
 
 class PandasSelectFixed(SelectFixedGGNN):
     def __init__(self, params: Dict[str, Any], domain_size: int, op_info: OpInfo):
-        params.update({
+        params |= {
             'num_node_features': self.encoder.get_num_node_features(),
             'num_edge_types': self.encoder.get_num_edge_types(),
-            'domain_size': domain_size
-        })
+            'domain_size': domain_size,
+        }
 
         self.encoder = PandasGraphEncoder()
         self.op_info = op_info
@@ -94,10 +94,10 @@ class PandasSelectFixed(SelectFixedGGNN):
 
 class PandasSubset(SubsetGGNN):
     def __init__(self, params: Dict[str, Any], op_info: OpInfo):
-        params.update({
+        params |= {
             'num_node_features': self.encoder.get_num_node_features(),
-            'num_edge_types': self.encoder.get_num_edge_types()
-        })
+            'num_edge_types': self.encoder.get_num_edge_types(),
+        }
 
         self.encoder = PandasGraphEncoder()
         self.op_info = op_info
@@ -122,10 +122,10 @@ class PandasSubset(SubsetGGNN):
 
 class PandasOrderedSubset(OrderedSubsetGGNN):
     def __init__(self, params: Dict[str, Any], op_info: OpInfo):
-        params.update({
+        params |= {
             'num_node_features': self.encoder.get_num_node_features(),
-            'num_edge_types': self.encoder.get_num_edge_types()
-        })
+            'num_edge_types': self.encoder.get_num_edge_types(),
+        }
 
         self.encoder = PandasGraphEncoder()
         self.op_info = op_info
@@ -150,12 +150,12 @@ class PandasOrderedSubset(OrderedSubsetGGNN):
 
 class PandasFuncSequence(SequenceFixedGGNN):
     def __init__(self, params: Dict[str, Any], num_classes: int, max_length: int, op_info: OpInfo):
-        params.update({
+        params |= {
             'num_node_features': self.encoder.get_num_node_features(),
             'num_edge_types': self.encoder.get_num_edge_types(),
             'num_classes': num_classes,
             'max_length': max_length,
-        })
+        }
 
         self.encoder = PandasGraphEncoder()
         self.op_info = op_info

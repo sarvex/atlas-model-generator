@@ -79,8 +79,14 @@ def operator(*args, **kwargs) -> Callable:
     allowed_kwargs = {'name', 'uid', 'tags', 'gen_name', 'gen_group', 'returns_lambda'}
     error_str = f"The @operator decorator should be applied either with no parentheses or " \
                 f"at least one of the following keyword args - {', '.join(allowed_kwargs)}."
-    assert (len(args) == 1 and len(kwargs) == 0 and callable(args[0])) or \
-           (len(args) == 0 and len(kwargs) > 0 and set(kwargs.keys()).issubset(allowed_kwargs)), error_str
+    assert (
+        len(args) == 1
+        and not kwargs
+        and callable(args[0])
+        or not args
+        and kwargs
+        and set(kwargs.keys()).issubset(allowed_kwargs)
+    ), error_str
 
     if len(args) == 1:
         return operator_decorator()(args[0])
@@ -142,7 +148,9 @@ def resolve_operator(operators: Dict[str, List[Tuple[Callable, Dict]]], op_info:
     candidates = [h for h in candidates if set(h[1]['tags'] or op_info.tags or []).issuperset(set(op_info.tags or []))]
 
     #  Get the "most-specific" matches i.e. handlers with the most number of fields specified (not None)
-    min_none_cnts = min([list(h[1].values()).count(None) for h in candidates], default=-1)
+    min_none_cnts = min(
+        (list(h[1].values()).count(None) for h in candidates), default=-1
+    )
     candidates = [h for h in candidates if list(h[1].values()).count(None) == min_none_cnts]
 
     if len(candidates) == 1:

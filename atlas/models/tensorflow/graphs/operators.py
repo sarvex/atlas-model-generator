@@ -15,25 +15,27 @@ def beam_search_ordered_subset(beam_size: int, probs: List[List[float]],
     results = []
     timesteps = len(probs[0])
     cum_max_prod = [1.0]
-    for step_probs in np.transpose(probs)[::-1]:
-        cum_max_prod.append(max(step_probs) * cum_max_prod[-1])
-
+    cum_max_prod.extend(
+        max(step_probs) * cum_max_prod[-1]
+        for step_probs in np.transpose(probs)[::-1]
+    )
     for step in range(timesteps):
         dst = []
         for node_idx, node_probs in enumerate(probs[:-1]):
             node_prob = node_probs[step]
-            for cur, prob in beam:
-                if node_idx in cur:
-                    continue
-
-                dst.append((cur + [node_idx], prob * node_prob))
-
+            dst.extend(
+                (cur + [node_idx], prob * node_prob)
+                for cur, prob in beam
+                if node_idx not in cur
+            )
         term_prob = probs[-1][step]
-        for cur, prob in beam:
-            #  Multiplication by cum_max_prod prevents biasing towards shorter sequences.
-            #  It simply multiplies by the probability of the most probable node for the remaining time-steps
-            results.append(([mapping[i] for i in cur], prob * term_prob * cum_max_prod[-(step + 2)]))
-
+        results.extend(
+            (
+                [mapping[i] for i in cur],
+                prob * term_prob * cum_max_prod[-(step + 2)],
+            )
+            for cur, prob in beam
+        )
         beam = sorted(dst, key=lambda x: -x[1])[:beam_size]
 
     return sorted(results, key=lambda x: -x[1])[:beam_size]
@@ -45,23 +47,23 @@ def beam_search_sequence(beam_size: int, probs: Sequence[List[float]],
     results = []
     timesteps = len(probs[0])
     cum_max_prod = [1.0]
-    for step_probs in np.transpose(probs)[::-1]:
-        cum_max_prod.append(max(step_probs) * cum_max_prod[-1])
-
+    cum_max_prod.extend(
+        max(step_probs) * cum_max_prod[-1]
+        for step_probs in np.transpose(probs)[::-1]
+    )
     for step in range(timesteps):
         dst = []
         for node_idx, node_probs in enumerate(probs[:-1]):
             node_prob = node_probs[step]
-            for cur, prob in beam:
-                #  The only change from OrderedSubset. No need to check for the subset property
-                dst.append((cur + [node_idx], prob * node_prob))
-
+            dst.extend((cur + [node_idx], prob * node_prob) for cur, prob in beam)
         term_prob = probs[-1][step]
-        for cur, prob in beam:
-            #  Multiplication by cum_max_prod prevents biasing towards shorter sequences.
-            #  It simply multiplies by the probability of the most probable node for the remaining time-steps
-            results.append(([mapping[i] for i in cur], prob * term_prob * cum_max_prod[-(step + 2)]))
-
+        results.extend(
+            (
+                [mapping[i] for i in cur],
+                prob * term_prob * cum_max_prod[-(step + 2)],
+            )
+            for cur, prob in beam
+        )
         beam = sorted(dst, key=lambda x: -x[1])[:beam_size]
 
     return sorted(results, key=lambda x: -x[1])[:beam_size]
@@ -229,8 +231,7 @@ class SelectGGNN(GGNN):
                 inference.append([(mapping[domain_node], prob)
                                   for domain_node, prob in zip(graph['domain'], per_graph_results[idx])])
             else:
-                inference.append([(domain_node, prob)
-                                  for domain_node, prob in zip(graph['domain'], per_graph_results[idx])])
+                inference.append(list(zip(graph['domain'], per_graph_results[idx])))
 
         return inference
 
@@ -315,11 +316,7 @@ class SubsetGGNN(GGNN):
             per_graph_results[graph_id].append(prob)
 
         for graph_id, graph in enumerate(data):
-            if 'mapping' in graph:
-                mapping = graph['mapping']
-            else:
-                mapping = graph['domain']
-
+            mapping = graph['mapping'] if 'mapping' in graph else graph['domain']
             inference.append(self.beam_search(top_k, per_graph_results[graph_id], mapping))
 
         return inference
@@ -330,9 +327,12 @@ class SubsetGGNN(GGNN):
         for idx, (discard_prob, keep_prob) in enumerate(probs):
             dst = []
             for cur, prob in beam:
-                dst.append((cur, prob * discard_prob))
-                dst.append((cur + [mapping[idx]], prob * keep_prob))
-
+                dst.extend(
+                    (
+                        (cur, prob * discard_prob),
+                        (cur + [mapping[idx]], prob * keep_prob),
+                    )
+                )
             beam = sorted(dst, key=lambda x: -x[1])[:beam_size]
 
         return beam
@@ -503,11 +503,7 @@ class OrderedSubsetGGNN(GGNN):
             per_graph_results[graph_id].append(prob)
 
         for graph_id, graph in enumerate(data):
-            if 'mapping' in graph:
-                mapping = graph['mapping']
-            else:
-                mapping = graph['domain']
-
+            mapping = graph['mapping'] if 'mapping' in graph else graph['domain']
             inference.append(self.beam_search(top_k, per_graph_results[graph_id], mapping))
 
         return inference

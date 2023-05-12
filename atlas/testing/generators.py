@@ -162,20 +162,14 @@ class TestBasicGeneratorFunctionality(unittest.TestCase):
     def test_gen_recursive_1(self):
         @generator(strategy='dfs')
         def binary(length: int):
-            if length == 0:
-                return ""
-
-            return Select(["0", "1"]) + binary(length - 1)
+            return "" if length == 0 else Select(["0", "1"]) + binary(length - 1)
 
         self.assertEqual(list(binary.generate(2)), ["00", "01", "10", "11"])
 
     def test_gen_recursive_2(self):
         @generator(strategy='dfs', caching=True)
         def binary(length: int):
-            if length == 0:
-                return ""
-
-            return binary(length - 1) + Select(["0", "1"])
+            return "" if length == 0 else binary(length - 1) + Select(["0", "1"])
 
         self.assertEqual(list(binary.generate(2)), ["00", "01", "10", "11"])
 
@@ -206,17 +200,11 @@ class TestBasicGeneratorFunctionality(unittest.TestCase):
     def test_gen_mutually_recursive_1(self):
         @generator(strategy='dfs')
         def binary1(length: int):
-            if length == 0:
-                return ""
-
-            return Select(["0", "1"]) + binary2(length - 1)
+            return "" if length == 0 else Select(["0", "1"]) + binary2(length - 1)
 
         @generator(strategy='dfs')
         def binary2(length: int):
-            if length == 0:
-                return ""
-
-            return Select(["0", "1"]) + binary1(length - 1)
+            return "" if length == 0 else Select(["0", "1"]) + binary1(length - 1)
 
         self.assertEqual(list(binary1.generate(2)), ["00", "01", "10", "11"])
         self.assertEqual(list(binary2.generate(2)), ["00", "01", "10", "11"])
@@ -224,24 +212,15 @@ class TestBasicGeneratorFunctionality(unittest.TestCase):
     def test_gen_mutually_recursive_2(self):
         @generator(strategy='dfs')
         def binary(length: int):
-            if length == 0:
-                return ""
-
-            return Select(["0", "1"]) + binary(length - 1)
+            return "" if length == 0 else Select(["0", "1"]) + binary(length - 1)
 
         @generator(strategy='dfs')
         def binary1(length: int):
-            if length == 0:
-                return ""
-
-            return Select(["0", "1"]) + binary2(length - 1)
+            return "" if length == 0 else Select(["0", "1"]) + binary2(length - 1)
 
         @generator(strategy='dfs')
         def binary2(length: int):
-            if length == 0:
-                return ""
-
-            return Select(["0", "1"]) + binary1(length - 1)
+            return "" if length == 0 else Select(["0", "1"]) + binary1(length - 1)
 
         for l in [2, 3]:
             self.assertEqual(list(binary.generate(l)), list(binary1.generate(l)))
@@ -313,8 +292,6 @@ class TestBasicGeneratorFunctionality(unittest.TestCase):
                                   upper_bit.call)
         except AssertionError:
             success = True
-            pass
-
         if not success:
             self.fail("Performance warning is erroneously generated.")
 
@@ -359,7 +336,9 @@ class TestBasicGeneratorFunctionality(unittest.TestCase):
 
             return s
 
-        values, traces = zip(*[i for i in itertools.islice(binary.with_env(tracing=True).generate(2), 50)])
+        values, traces = zip(
+            *list(itertools.islice(binary.with_env(tracing=True).generate(2), 50))
+        )
         self.assertEqual([binary.with_env(replay=t).call(2) for t in traces], list(values))
         #  Arguments to call omitted
         self.assertEqual([binary.with_env(replay=t).call() for t in traces], list(values))

@@ -52,10 +52,12 @@ class GGNNPropagator(GNNComponent):
         for src, e_type, dst in edges:
             adj_lists[e_type].append((src, dst))
 
-        adj_lists = [np.array(sorted(l), dtype=np.int32) if len(l) > 0 else np.zeros((0, 2), dtype=np.int32)
-                     for l in adj_lists]
-
-        return adj_lists
+        return [
+            np.array(sorted(l), dtype=np.int32)
+            if len(l) > 0
+            else np.zeros((0, 2), dtype=np.int32)
+            for l in adj_lists
+        ]
 
     def construct_node_embedding(self, features: List[int]):
         embedding = [0] * self.node_dimension
@@ -109,8 +111,10 @@ class GGNNPropagator(GNNComponent):
         self.placeholders['initial_node_embedding'] = tf.placeholder(tf.float32, [None, self.node_dimension],
                                                                      name='node_embeddings')
         #  We have a separate adjacency matrix for every edge type
-        self.placeholders['adjacency_lists'] = [tf.placeholder(tf.int32, [None, 2], name='adjacency_e{}'.format(e))
-                                                for e in range(self.num_edge_types)]
+        self.placeholders['adjacency_lists'] = [
+            tf.placeholder(tf.int32, [None, 2], name=f'adjacency_e{e}')
+            for e in range(self.num_edge_types)
+        ]
 
         #  Need to create placeholders for these as dropout should not be used during inference
         self.placeholders['graph_state_dropout'] = tf.placeholder(tf.float32, None, name='graph_state_dropout')
@@ -215,10 +219,10 @@ class GGNNPropagator(GNNComponent):
     def define_message_attention(self, layer: int, src_node_ids, src_node_embeddings,
                                  dst_node_ids, dst_node_embeddings, messages):
 
-        message_edge_types = []
-        for e_type, adj_list in enumerate(self.placeholders['adjacency_lists']):
-            message_edge_types.append(tf.ones_like(adj_list[:, 1], dtype=tf.int32) * e_type)
-
+        message_edge_types = [
+            tf.ones_like(adj_list[:, 1], dtype=tf.int32) * e_type
+            for e_type, adj_list in enumerate(self.placeholders['adjacency_lists'])
+        ]
         message_edge_types = tf.concat(message_edge_types, axis=0)
         edge_attn_factors = tf.nn.embedding_lookup(params=self.weights['edge_type_attention_weights'][layer],
                                                    ids=message_edge_types)

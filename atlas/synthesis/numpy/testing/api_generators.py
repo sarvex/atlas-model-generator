@@ -37,9 +37,7 @@ class TestGenerators(unittest.TestCase):
             inputs += constants
 
         def checker(v1, v2):
-            if not isinstance(v2, np.ndarray):
-                return False
-            return np.array_equal(v1, v2)
+            return False if not isinstance(v2, np.ndarray) else np.array_equal(v1, v2)
 
         func_seqs = [[funcs[i] for i in seq] for seq in seqs]
         for func_seq in func_seqs:

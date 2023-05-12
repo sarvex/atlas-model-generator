@@ -25,8 +25,12 @@ class GeneratorInversionStrategy(DfsStrategy, ABC):
 
     def checked_select(self, domain, key, **kwargs):
         try:
-            if 'default' in kwargs and (kwargs['default'] == key or kwargs['default'] is key or
-                                        (str(key) in ['nan', 'None'] and str(kwargs['default']) == str(key))):
+            if 'default' in kwargs and (
+                kwargs['default'] == key
+                or kwargs['default'] is key
+                or str(key) in {'nan', 'None'}
+                and str(kwargs['default']) == str(key)
+            ):
                 yield key
                 return
         except Exception as e:

@@ -36,7 +36,7 @@ class GGNN(GNN):
 
     def define_batch(self, graphs: List[Dict], is_training: bool = True):
         batch_dict = {}
-        batch_dict.update(self.propagator.define_batch(graphs, is_training) or {})
+        batch_dict |= (self.propagator.define_batch(graphs, is_training) or {})
         batch_dict.update(self.classifier.define_batch(graphs, is_training) or {})
         batch_dict.update(self.optimizer.define_batch(graphs, is_training) or {})
 

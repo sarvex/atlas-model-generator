@@ -133,8 +133,9 @@ def gen_df_select_dtypes(inputs, output, *args, **kwargs):
     _self = SelectExternal(inputs, dtype=pd.DataFrame, kwargs=kwargs, uid="1")
     c = {'I0': _self, 'O': output}
     dtypes = set(map(str, _self.dtypes))
-    use_include = SelectFixed([True, False], context=c, kwargs=kwargs, uid="2")
-    if use_include:
+    if use_include := SelectFixed(
+        [True, False], context=c, kwargs=kwargs, uid="2"
+    ):
         _include = Subset(dtypes, context=c, kwargs=kwargs, uid="3")
         _exclude = None
     else:
@@ -159,7 +160,9 @@ def gen_df_astype(inputs, output, *args, **kwargs):
 
     cand_dtypes = {np.dtype('int64'), np.dtype('int32'), np.dtype('float64'), np.dtype('float32'),
                    np.dtype('bool'), np.dtype('uint32'), np.dtype('uint64'), int, float, str, bool}
-    cand_dtypes = set(filter(lambda x: not any(x == i for i in _self.dtypes), cand_dtypes))
+    cand_dtypes = set(
+        filter(lambda x: all(x != i for i in _self.dtypes), cand_dtypes)
+    )
 
     if isinstance(output, pd.DataFrame):
         cand_dtypes.update(list(output.dtypes))
@@ -362,11 +365,9 @@ def gen_df_where(inputs, output, *args, **kwargs):
                        raise_on_error=None)"""
 
     def is_valid_cond(cond):
-        if isinstance(cond, pd.DataFrame) and \
-                len(cond.select_dtypes(include=[bool, np.dtype('bool')]).columns) != len(cond.columns):
-            return False
-
-        return True
+        return not isinstance(cond, pd.DataFrame) or len(
+            cond.select_dtypes(include=[bool, np.dtype('bool')]).columns
+        ) == len(cond.columns)
 
     _self = SelectExternal(inputs, dtype=pd.DataFrame, kwargs=kwargs, uid="1")
 
@@ -389,11 +390,9 @@ def gen_df_mask(inputs, output, *args, **kwargs):
                        raise_on_error=None)"""
 
     def is_valid_cond(cond):
-        if isinstance(cond, pd.DataFrame) and \
-                len(cond.select_dtypes(include=[bool, np.dtype('bool')]).columns) != len(cond.columns):
-            return False
-
-        return True
+        return not isinstance(cond, pd.DataFrame) or len(
+            cond.select_dtypes(include=[bool, np.dtype('bool')]).columns
+        ) == len(cond.columns)
 
     _self = SelectExternal(inputs, dtype=pd.DataFrame, kwargs=kwargs, uid="1")
 
@@ -434,8 +433,9 @@ def gen_df_getitem(inputs, output, *args, **kwargs):
     _self = SelectExternal(inputs, dtype=pd.DataFrame, kwargs=kwargs, uid="1")
     c = {'I0': _self, 'O': output}
 
-    single_col = SelectFixed([True, False], context=c, kwargs=kwargs, uid="2")
-    if single_col:
+    if single_col := SelectFixed(
+        [True, False], context=c, kwargs=kwargs, uid="2"
+    ):
         _key = Select(_self.columns, context=c, kwargs=kwargs, uid="3")
     else:
         _key = list(OrderedSubset(_self.columns, context=c, kwargs=kwargs, uid="4"))
@@ -524,10 +524,7 @@ def gen_df_mul(inputs, output, *args, **kwargs):
     #  would wreak havoc on the system
     #  TODO : Is there a better way without restricting functionality?
     def validate_self(val):
-        if len(val.select_dtypes(include=np.number).columns) != len(val.columns):
-            return False
-
-        return True
+        return len(val.select_dtypes(include=np.number).columns) == len(val.columns)
 
     def validate_other(val):
         if isinstance(val, pd.DataFrame):
@@ -1173,8 +1170,7 @@ def gen_df_combine(inputs, output, *args, **kwargs):
 
     _overwrite = SelectFixed([True, False], context=c, kwargs=kwargs, uid="4")
 
-    fill_val_cands = [inp for inp in inputs if np.isscalar(inp)]
-    if len(fill_val_cands) > 0:
+    if fill_val_cands := [inp for inp in inputs if np.isscalar(inp)]:
         _fill_value = Select([None] + fill_val_cands, context=c, kwargs=kwargs, uid="5")
     else:
         _fill_value = None
@@ -1281,8 +1277,9 @@ def gen_df_groupby(inputs, output, *args, **kwargs):
         _level = None
     else:
         src = _self.index if _axis == 0 else _self.columns
-        single = SelectFixed([True, False], context=c, kwargs=kwargs, uid="6")
-        if single:
+        if single := SelectFixed(
+            [True, False], context=c, kwargs=kwargs, uid="6"
+        ):
             _level = Select(list(range(0, src.nlevels - 1)), context=c, kwargs=kwargs, uid="7")
         else:
             _level = list(OrderedSubset(list(range(src.nlevels)),
@@ -1290,19 +1287,19 @@ def gen_df_groupby(inputs, output, *args, **kwargs):
 
     if _level is not None:
         _by = None
-    else:
-        use_ext = SelectFixed([True, False], context=c, kwargs=kwargs, uid="9")
-        if use_ext:
-            dimension = _self.shape[0] if _axis == 0 else _self.shape[1]
-            _by = Select([inp for inp in inputs
-                          if isinstance(inp, (pd.Series, list, tuple, dict, np.ndarray)) and len(inp) == dimension],
-                         context=c, kwargs=kwargs, uid="10")
+    elif use_ext := SelectFixed(
+        [True, False], context=c, kwargs=kwargs, uid="9"
+    ):
+        dimension = _self.shape[0] if _axis == 0 else _self.shape[1]
+        _by = Select([inp for inp in inputs
+                      if isinstance(inp, (pd.Series, list, tuple, dict, np.ndarray)) and len(inp) == dimension],
+                     context=c, kwargs=kwargs, uid="10")
 
-        else:
-            cols = list(_self.columns)
-            index = _self.index
-            index_cols = [index.names[i] for i in range(index.nlevels) if index.names[i] is not None]
-            _by = list(Subset(cols + list(index_cols), context=c, kwargs=kwargs, uid="11"))
+    else:
+        cols = list(_self.columns)
+        index = _self.index
+        index_cols = [index.names[i] for i in range(index.nlevels) if index.names[i] is not None]
+        _by = list(Subset(cols + list(index_cols), context=c, kwargs=kwargs, uid="11"))
 
     return _self.groupby(by=_by, axis=_axis, level=_level, as_index=_as_index, sort=_sort), {
         'self': _self, 'by': _by, 'axis': _axis, 'level': _level, 'as_index': _as_index, 'sort': _sort
@@ -1555,10 +1552,7 @@ def gen_df_cumprod(inputs, output, *args, **kwargs):
     #  would wreak havoc on the system
     #  TODO : Is there a better way without restricting functionality?
     def validate_self(val):
-        if len(val.select_dtypes(include=np.number).columns) != len(val.columns):
-            return False
-
-        return True
+        return len(val.select_dtypes(include=np.number).columns) == len(val.columns)
 
     _self = SelectExternal(inputs, dtype=pd.DataFrame, preds=[validate_self], kwargs=kwargs,
                            datagen_label="self_df_computational", uid="1")
@@ -1801,10 +1795,7 @@ def gen_df_prod(inputs, output, *args, **kwargs):
     #  would wreak havoc on the system
     #  TODO : Is there a better way without restricting functionality?
     def validate_self(val):
-        if len(val.select_dtypes(include=np.number).columns) != len(val.columns):
-            return False
-
-        return True
+        return len(val.select_dtypes(include=np.number).columns) == len(val.columns)
 
     _self = SelectExternal(inputs, dtype=pd.DataFrame, preds=[validate_self], kwargs=kwargs,
                            datagen_label="self_df_computational", uid="1")
@@ -2296,8 +2287,9 @@ def gen_df_rename(inputs, output, *args, **kwargs):
     _self = SelectExternal(inputs, dtype=pd.DataFrame, kwargs=kwargs, uid="1")
     c = {'I0': _self, 'O': output}
 
-    use_index_columns = SelectFixed([True, False], context=c, kwargs=kwargs, uid="2")
-    if use_index_columns:
+    if use_index_columns := SelectFixed(
+        [True, False], context=c, kwargs=kwargs, uid="2"
+    ):
         _index = SelectExternal(inputs, dtype=(dict, Callable), kwargs=kwargs, context=c, uid="3")
         _columns = SelectExternal(inputs, dtype=(dict, Callable), kwargs=kwargs, context=c, uid="4")
 
@@ -2493,8 +2485,9 @@ def gen_df_pivot_table(inputs, output, *args, **kwargs):
 
     col_domain = [col for col in columns if not isinstance(col, (list, tuple))]
 
-    singleton = SelectFixed([True, False], context=c, kwargs=kwargs, uid="11")
-    if singleton:
+    if singleton := SelectFixed(
+        [True, False], context=c, kwargs=kwargs, uid="11"
+    ):
         _values = Select(col_domain, context=c, kwargs=kwargs, uid="12")
     else:
         _values = list(OrderedSubset(columns, context=c, kwargs=kwargs, uid="13"))
@@ -2611,7 +2604,10 @@ def gen_df_unstack(inputs, output, *args, **kwargs):
     if isinstance(output, (pd.Series, pd.DataFrame)):
         fill_value_cands.update(output.values.flatten())
 
-    fill_value_default = not (len(fill_value_cands) > 0 and SelectFixed([True, False], context=c, kwargs=kwargs, uid="4"))
+    fill_value_default = not (
+        fill_value_cands
+        and SelectFixed([True, False], context=c, kwargs=kwargs, uid="4")
+    )
     if fill_value_default:
         _fill_value = None
     else:
@@ -2678,8 +2674,7 @@ def gen_df_merge(inputs, output, *args, **kwargs):
     _how = SelectFixed(['inner', 'outer', 'left', 'right'], context=c, kwargs=kwargs, uid="3")
     _sort = SelectFixed([False, True], context=c, kwargs=kwargs, uid="4")
 
-    use_on = SelectFixed([True, False], context=c, kwargs=kwargs, uid="5")
-    if use_on:
+    if use_on := SelectFixed([True, False], context=c, kwargs=kwargs, uid="5"):
         common_cols = set(_self.columns) & set(_right.columns)
         _on = list(Subset(common_cols, context=c, kwargs=kwargs, uid="6"))
 
@@ -2707,11 +2702,7 @@ def gen_df_merge(inputs, output, *args, **kwargs):
             # Cannot use right_on if right_index is activated
             columns = set(_right.columns)
             lengths = None
-            if _left_index:
-                lengths = [_self.index.nlevels]
-            else:
-                lengths = [len(_left_on)]
-
+            lengths = [_self.index.nlevels] if _left_index else [len(_left_on)]
             _right_on = list(OrderedSubset(columns, lengths=lengths, context=c, kwargs=kwargs, uid="10"))
 
         return _self.merge(_right, how=_how, sort=_sort, left_index=_left_index, right_index=_right_index,
